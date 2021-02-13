@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Tensor2Tensor Authors.
+# Copyright 2020 The Tensor2Tensor Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ python parallel_launch.py \
   --name=wikisum-refs-web \
   --code_dir=./ \
   --log_dir=$BUCKET/refs_logs \
-  --setup_command="pip3 install aiohttp cchardet aiodns bs4 -q --user" \
+  --setup_command="pip3 install aiohttp cchardet aiodns bs4 --user" \
   --command_prefix="python3 wikisum/get_references_web.py --out_dir=$BUCKET/wiki_references --shard_id"
 ```
 """
@@ -61,7 +61,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_integer("num_instances", None, "Number of instances to launch.")
 flags.DEFINE_string("name", None, "Instance name prefix.")
-flags.DEFINE_string("log_dir", None, "GCS bucket to copy logs out to.")
+#flags.DEFINE_string("log_dir", None, "GCS bucket to copy logs out to.")
 flags.DEFINE_string("code_dir", None, "Directory to copy.")
 flags.DEFINE_string("setup_command", None, "Setup command to run.")
 flags.DEFINE_string("command_prefix", None, "Command to run, prefix.")
@@ -74,6 +74,8 @@ flags.DEFINE_integer("num_threads", 48,
                      "Number of threads to use to spin up jobs.")
 flags.DEFINE_bool("debug_keep_up", False,
                   "If True, will keep the machine up. num_instances must be 1.")
+flags.DEFINE_bool("delete_on_error", False,
+                  "If True, will keep the machine up. num_instances must be 1.")                  
 flags.DEFINE_string("instance_ids", None,
                     "Comma-separated list of integer instance ids to launch. "
                     "Useful if some failed on a previous run and you only want "
@@ -86,7 +88,7 @@ DELETE_SELF = ("gcloud compute instances delete $(hostname) --quiet "
 CREATE_INSTANCE = ("gcloud compute instances create {instance_name} "
                    "--custom-cpu {cpu} --custom-memory {mem} "
                    "--custom-extensions "
-                   "--image-project=ml-images --image-family=tf-1-7 "
+                   "--image-project=deeplearning-platform-release --image-family=tf-latest-cpu "
                    "--scopes=cloud-platform")
 COPY_CODE = "gcloud compute scp --recurse {local_dir} {instance_name}:~/"
 SSH = "gcloud compute ssh {instance_name} --command"
@@ -134,6 +136,8 @@ def wait_for_ssh(ip):
         return True
       except socket.timeout:
         pass
+      except ConnectionRefusedError as e:
+        tf.logging.info(f'connection refused for {ip}, retrying')
     time.sleep(10)
   return False
 
@@ -142,7 +146,7 @@ def create_instance(instance_name, cpu=1, mem=4):
   tf.logging.info("Creating instance %s", instance_name)
   out = cloud.shell_output(CREATE_INSTANCE, instance_name=instance_name,
                            cpu=cpu, mem=mem)
-  return out.split("\n")[1:-1][0].split()[8]
+  return out.split("\n")[1:-1][0].split()[4]
 
 
 def list_vm_names_and_ips():
@@ -219,7 +223,7 @@ def main(_):
   vm_info = list_vm_names_and_ips()
   vm_names = list(zip(*vm_info))[0] if vm_info else []
 
-  pool = mp.Pool(FLAGS.num_threads)
+  # pool = mp.Pool(FLAGS.num_threads)
   async_results = []
 
   assert FLAGS.log_dir
@@ -256,9 +260,9 @@ def main(_):
     args = (instance_name, command, existing_ip,
             FLAGS.cpu, FLAGS.mem, code_dir,
             FLAGS.setup_command)
-    res = pool.apply_async(launch_instance, args)
-    async_results.append((res, instance_name, i))
-
+    async_results.append((launch_instance(*args), instance_name, i))
+    # res = pool.apply_async(launch_instance, args)
+    # async_results.append((res, instance_name, i))
   failed = []
   for res, instance_name, i in async_results:
     try:
@@ -275,9 +279,11 @@ def main(_):
                      "Attempting delete in case they are still up. Rerun with "
                      "--instance_ids='%s' to attempt relaunch.",
                      len(failed), str(failed), ids_for_flag)
-    for instance_name, _ in failed:
-      res = pool.apply_async(delete_instance, (instance_name,))
-      results.append(res)
+    if FLAGS.delete_on_error:
+      for instance_name, _ in failed:
+        res = delete_instance(instance_name)
+        # res = pool.apply_async(delete_instance, (instance_name,))
+        results.append(res)
 
   for res in results:
     try:

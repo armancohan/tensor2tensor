@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Tensor2Tensor Authors.
+# Copyright 2020 The Tensor2Tensor Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@ import gzip
 import os
 import re
 import urllib
+import urllib.request
+import functools
 
 import tensorflow.compat.v1 as tf
 
@@ -118,7 +120,7 @@ def wet_records_from_file_obj(f, take_ownership=False):
 def wet_records(wet_filepath):
   """Generate WETRecords from filepath."""
   if wet_filepath.endswith('.gz'):
-    fopen = gzip.open
+    fopen = functools.partial(gzip.open, mode='rt')
   else:
     fopen = tf.gfile.GFile
 
@@ -134,14 +136,14 @@ def download(url, download_dir):
     return outname
   inprogress = outname + '.incomplete'
   print('Downloading %s' % url)
-  inprogress, _ = urllib.urlretrieve(url, inprogress)
+  inprogress, _ = urllib.request.urlretrieve(url, inprogress)
   tf.gfile.Rename(inprogress, outname)
   return outname
 
 
 def wet_download_urls(wet_paths_url, tmp_dir, rm_after=True):
   paths_gz = download(wet_paths_url, tmp_dir)
-  with gzip.open(paths_gz) as f:
+  with gzip.open(paths_gz, 'rt') as f:
     path = f.readline()
     while path:
       download_path = S3_HTTP_PREFIX + path[:-1]

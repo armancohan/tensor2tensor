@@ -1,5 +1,5 @@
 # coding=utf-8
-# Copyright 2021 The Tensor2Tensor Authors.
+# Copyright 2020 The Tensor2Tensor Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -220,10 +220,10 @@ def _truncate_to_lead_section(example):
 def _make_example_from_record(record):
   features = {
       "url":
-          tf.train.Feature(bytes_list=tf.train.BytesList(value=[record.url])),
+          tf.train.Feature(bytes_list=tf.train.BytesList(value=[record.url.encode()])),
       "content":
           tf.train.Feature(
-              bytes_list=tf.train.BytesList(value=[record.content])),
+              bytes_list=tf.train.BytesList(value=[record.content.encode()])),
   }
   return tf.train.Example(features=tf.train.Features(feature=features))
 
