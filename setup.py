@@ -66,7 +66,7 @@ setup(
         'tensorflow-addons',
         'tensorflow-datasets',
         'tensorflow-gan',
-        'tensorflow-probability==0.8.0',
+        'tensorflow-probability>=0.8.0',
         'tf_slim',
         'tqdm',
     ],
