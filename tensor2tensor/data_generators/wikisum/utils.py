@@ -83,8 +83,11 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
     # Consume empty separator
     f.readline()
 
-    # Read content
-    length = int(line.split(':')[1])
+    try:
+      length = int(line.split(':')[1])
+    except ValueError:
+      tf.logging.info('skipped record for bad content length format')
+      return None
 
     return cls(url, length)
 
