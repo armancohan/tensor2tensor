@@ -71,7 +71,7 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
       return None
     
     i = 0
-    while not line.startswith(cls.LENGTH_HEADER) and i < MAX_LINES:
+    while not line.startswith(cls.LENGTH_HEADER) and i < cls.MAX_LINES:
       if line.startswith(cls.URI_HEADER):
         url = line[len(cls.URI_HEADER):].strip()
       line = f.readline()
