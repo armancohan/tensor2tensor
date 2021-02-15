@@ -77,7 +77,7 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
       line = f.readline()
       i += 1
 
-    if i == MAX_LINES:
+    if i == cls.MAX_LINES:
       return None
 
     # Consume empty separator
