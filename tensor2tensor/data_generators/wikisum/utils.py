@@ -68,10 +68,16 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
     if not line:
       # EOF
       return None
-    while not line.startswith(cls.LENGTH_HEADER):
+    
+    i = 0
+    while not line.startswith(cls.LENGTH_HEADER) and i < 2000:
       if line.startswith(cls.URI_HEADER):
         url = line[len(cls.URI_HEADER):].strip()
       line = f.readline()
+      i += 1
+
+    if i == 2000:
+      return None
 
     # Consume empty separator
     f.readline()

@@ -508,11 +508,10 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
   """Extract references from WET files into sharded output files."""
   # Setup output files
   shard_files = make_ref_shard_files(out_dir)
-
   num_refs = 0
   for i, wet_file in enumerate(wet_files):
     num_refs_in_wet = 0
-    tf.logging.info("Processing file %d", i)
+    tf.logging.info(f"Processing file {i}")
 
     # Read metadata file
     metadata_fname = os.path.join(
@@ -533,8 +532,9 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
       # local
       record_gen = cc_utils.wet_records_from_file_obj(
           cc_utils.gzip_memfile(wet_file), take_ownership=True)
-
+    jj = 0
     for wet_record in record_gen:
+      jj += 1
       shard_ids = wet_metadata.get(wet_record.url)
       if not shard_ids:
         # URL not in dataset
@@ -547,7 +547,6 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
         shard_files[shard_id].write(ex_str)
       num_refs += 1
       num_refs_in_wet += 1
-
     tf.logging.info("Wrote out %d references for this WET", num_refs_in_wet)
 
   tf.logging.info("Wrote out %d references total", num_refs)
