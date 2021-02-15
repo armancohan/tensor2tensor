@@ -58,6 +58,7 @@ def readahead(path):
 class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
   URI_HEADER = 'WARC-Target-URI: '
   LENGTH_HEADER = 'Content-Length: '
+  MAX_LINES = 10000
 
   @classmethod
   def read(cls, f):
@@ -70,13 +71,13 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
       return None
     
     i = 0
-    while not line.startswith(cls.LENGTH_HEADER) and i < 2000:
+    while not line.startswith(cls.LENGTH_HEADER) and i < MAX_LINES:
       if line.startswith(cls.URI_HEADER):
         url = line[len(cls.URI_HEADER):].strip()
       line = f.readline()
       i += 1
 
-    if i == 2000:
+    if i == MAX_LINES:
       return None
 
     # Consume empty separator
