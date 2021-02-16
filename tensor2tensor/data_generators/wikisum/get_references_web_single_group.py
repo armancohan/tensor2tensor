@@ -31,7 +31,7 @@ import random
 
 import asyncio
 import aiohttp
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensor2tensor.data_generators.wikisum import html
 from tensor2tensor.data_generators.wikisum import utils
@@ -160,7 +160,6 @@ async def fetch_url(url, session, side_data):
   except:
     # Request can fail for many reasons.
     pass
-
   return text, side_data
 
 
