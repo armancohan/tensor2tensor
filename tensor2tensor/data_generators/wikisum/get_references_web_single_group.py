@@ -102,8 +102,8 @@ def shard(items, num_shards):
   return sharded
 
 
-def mp_get_text(url, html):
-  return url, html.get_text_from_html(html)
+def mp_get_text(url, html_entry):
+  return url, html.get_text_from_html(html_entry)
 
 
 def encode(s):
