@@ -92,7 +92,7 @@ CREATE_INSTANCE = ("gcloud compute instances create {instance_name} "
                    "--scopes=cloud-platform")
 COPY_CODE = "gcloud compute scp --recurse {local_dir} {instance_name}:~/"
 SSH = "gcloud compute ssh {instance_name} --command"
-SCREEN = "screen -dmS test bash -c \"{command}\""
+SCREEN = "screen -dmS test bash -c \"export PATH=/opt/conda/bin:$PATH && {command}\""
 DEFAULT_ZONE = "gcloud config get-value compute/zone"
 LOGS = "> ~/logs-{task_id}.txt 2>&1; gsutil cp ~/logs-{task_id}.txt {bucket}"
 
@@ -101,6 +101,7 @@ def remote_run(cmd, instance_name, detach=False, retries=1):
   """Run command on GCS instance, optionally detached."""
   if detach:
     cmd = SCREEN.format(command=cmd)
+  tf.logging.info(f"running {cmd} on {instance_name}")    
   args = SSH.format(instance_name=instance_name).split()
   args.append(cmd)
   for i in range(retries + 1):
@@ -172,6 +173,11 @@ def delete_instance(instance_name):
   cloud.shell_run(DELETE, name=instance_name)
 
 
+def kill_python(instance_names):
+  for instance_name in instance_names:
+    cloud.shell_run("ps -aux | grep python | awk '{print $2}' |xargs kill", name=instance_name)
+
+
 def launch_instance(instance_name,
                     command,
                     existing_ip=None,
@@ -195,7 +201,7 @@ def launch_instance(instance_name,
   # Run setup
   if setup_command:
     tf.logging.info("Running setup on %s", instance_name)
-    remote_run(setup_command, instance_name)
+    remote_run(setup_command, instance_name, retries=0)
 
   # Run command
   tf.logging.info("Running command on %s", instance_name)
@@ -209,6 +215,7 @@ def main(_):
   assert zone
 
   code_dir = None
+
   if FLAGS.code_dir:
     code_dir = os.path.abspath(os.path.expanduser(FLAGS.code_dir))
 
@@ -223,7 +230,7 @@ def main(_):
   vm_info = list_vm_names_and_ips()
   vm_names = list(zip(*vm_info))[0] if vm_info else []
 
-  # pool = mp.Pool(FLAGS.num_threads)
+  pool = mp.Pool(FLAGS.num_threads)
   async_results = []
 
   assert FLAGS.log_dir
@@ -250,7 +257,7 @@ def main(_):
     logging = LOGS.format(task_id=i, bucket=log_dir) if log_dir else ""
     delete = DELETE_SELF.format(zone=zone)
     if FLAGS.debug_keep_up:
-      assert len(instance_ids) == 1
+      # assert len(instance_ids) == 1
       delete = ""
     command = "{prefix} {suffix} {logging}; {delete}".format(
         prefix=FLAGS.command_prefix,
@@ -260,9 +267,9 @@ def main(_):
     args = (instance_name, command, existing_ip,
             FLAGS.cpu, FLAGS.mem, code_dir,
             FLAGS.setup_command)
-    async_results.append((launch_instance(*args), instance_name, i))
-    # res = pool.apply_async(launch_instance, args)
-    # async_results.append((res, instance_name, i))
+    # async_results.append((launch_instance(*args), instance_name, i))
+    res = pool.apply_async(launch_instance, args)
+    async_results.append((res, instance_name, i))
   failed = []
   for res, instance_name, i in async_results:
     try:
@@ -281,8 +288,8 @@ def main(_):
                      len(failed), str(failed), ids_for_flag)
     if FLAGS.delete_on_error:
       for instance_name, _ in failed:
-        res = delete_instance(instance_name)
-        # res = pool.apply_async(delete_instance, (instance_name,))
+        # res = delete_instance(instance_name)
+        res = pool.apply_async(delete_instance, (instance_name,))
         results.append(res)
 
   for res in results:
