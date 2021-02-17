@@ -67,6 +67,7 @@ def main(_):
       "--urls_dir=%s" % FLAGS.urls_dir,
       "--shard_id=%d" % FLAGS.shard_id,
       "--debug_num_urls=%d" % FLAGS.debug_num_urls,
+      "--log_every=%d" % FLAGS.log_every
   ]
   with utils.timing("all_groups_fetch"):
     for i in range(num_groups):

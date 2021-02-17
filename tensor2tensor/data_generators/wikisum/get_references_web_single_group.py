@@ -156,7 +156,7 @@ async def fetch_url(url, session, side_data):
       if response.status == 200:
         text = await response.text()
       else:
-        tf.logging.error("Status %d, url: %s", response.status, url)
+        tf.logging.debug("Status %d, url: %s", response.status, url)
   except:
     # Request can fail for many reasons.
     pass
