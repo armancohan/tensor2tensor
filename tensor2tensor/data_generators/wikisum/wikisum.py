@@ -223,7 +223,7 @@ def _make_example_from_record(record):
           tf.train.Feature(bytes_list=tf.train.BytesList(value=[record.url.encode()])),
       "content":
           tf.train.Feature(
-              bytes_list=tf.train.BytesList(value=[record.content.encode()])),
+              bytes_list=tf.train.BytesList(value=[record.content])),
   }
   return tf.train.Example(features=tf.train.Features(feature=features))
 

@@ -56,8 +56,8 @@ def readahead(path):
 
 
 class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
-  URI_HEADER = 'WARC-Target-URI: '
-  LENGTH_HEADER = 'Content-Length: '
+  URI_HEADER = b'WARC-Target-URI: '
+  LENGTH_HEADER = b'Content-Length: '
   MAX_LINES = 10000
 
   @classmethod
@@ -73,18 +73,18 @@ class WETHeader(collections.namedtuple('WETHeader', ['url', 'length'])):
     i = 0
     while not line.startswith(cls.LENGTH_HEADER) and i < cls.MAX_LINES:
       if line.startswith(cls.URI_HEADER):
-        url = line[len(cls.URI_HEADER):].strip()
+        url = line[len(cls.URI_HEADER):].strip().decode()
       line = f.readline()
       i += 1
-
     if i == cls.MAX_LINES:
+      tf.logging.info('Header too long, skipping')
       return None
 
     # Consume empty separator
     f.readline()
 
     try:
-      length = int(line.split(':')[1])
+      length = int(line.split(b':')[1])
     except ValueError:
       tf.logging.info('skipped record for bad content length format')
       return None
@@ -130,7 +130,7 @@ def wet_records_from_file_obj(f, take_ownership=False):
 def wet_records(wet_filepath):
   """Generate WETRecords from filepath."""
   if wet_filepath.endswith('.gz'):
-    fopen = functools.partial(gzip.open, mode='rt')
+    fopen = functools.partial(gzip.open, mode='rb')
   else:
     fopen = tf.gfile.GFile
 
