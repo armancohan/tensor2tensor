@@ -53,6 +53,7 @@ WIKI_URLS_FILE = "wiki_urls.json-%05d-of-01000"
 EOT = "<EOT>"  # end-of-title string
 _MIN_REFS = 1
 _MIN_LEADSECTION_TOKENS = 1
+_MIN_LEADSECTION_TOKENS_CHARS = 30
 
 
 class WikisumBase(problem.Problem):
@@ -389,8 +390,9 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
   tf.logging.info("Processing %d input shards into %d output files.",
                   len(shard_ids), len(out_filepaths))
 
-  vocab = text_encoder.SubwordTextEncoder(vocab_path)
-  eot_ids = vocab.encode(EOT)
+  vocab = None 
+  # text_encoder.SubwordTextEncoder(vocab_path)
+  # eot_ids = vocab.encode(EOT)
 
   def example_generator():
     """Generate Example dicts."""
@@ -399,8 +401,10 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
                  wiki_found_refs=[], wikis_skipped_no_refs=0,
                  wikis_skipped_short_lead=0, num_wikis_written=0)
     ref_files_by_shard = _references_files_by_shard(refs_dir)
+    found_ , not_found_ = 0, 0    
     for shard_id in shard_ids:
       tf.logging.info("Processing shard %d", shard_id)
+      # import ipdb; ipdb.set_trace()
       wiki_urls = _wiki_urls_for_shard(shard_id, urls_dir)
       tf.logging.info("Loaded wiki URLs for shard")
       refs_content = _references_content(ref_files_by_shard[shard_id])
@@ -416,10 +420,15 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
         stats["total_original_refs"] += len(ref_urls)
         stats_wiki_original_refs = len(ref_urls)
         stats_wiki_found_refs = 0
+        # import ipdb; ipdb.set_trace()
+        tf.logging.info(f"found {found_}, not found: {not_found_}")        
         for ref_url in ref_urls:
-          ref_content = refs_content.get(ref_url)
+          ref_content = refs_content.get(ref_url.encode())
           if not ref_content:
+            not_found_ += 1
             continue
+          else:
+            found_ += 1            
           stats["total_found_refs"] += 1
           stats["ref_lengths"].append(len(ref_content))
           stats_wiki_found_refs += 1
@@ -436,35 +445,38 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
         wiki_title = _normalize_text(wiki.title)
         ranked_paragraphs = rank_reference_paragraphs(wiki_title,
                                                       wiki_ref_content)
-
         # Construct inputs from Wiki title and references
-        inputs = []
-        inputs.extend(vocab.encode(wiki_title))
-        inputs.extend(eot_ids)
+        inputs = [wiki_title]
+        total_len = len(wiki_title)
+        # inputs.extend(vocab.encode(wiki_title))
+        # inputs.extend(eot_ids)
         for paragraph in ranked_paragraphs:
-          if len(inputs) >= 1e6:
+          if total_len >= 1e7:
             break
           paragraph += " "
-          inputs.extend(vocab.encode(paragraph))
+          inputs.append(paragraph)
+          total_len += len(paragraph)
 
         # Construct targets from article sections
-        targets, section_boundaries = _encode_wiki_sections(
+        titles, sections = _encode_wiki_sections(
             wiki.sections, vocab)
 
         # Skip if lead section is too short
-        if (not section_boundaries or
-            section_boundaries[0] < _MIN_LEADSECTION_TOKENS):
+        if (not sections or
+            len(sections[0]) < _MIN_LEADSECTION_TOKENS_CHARS):
           stats["wikis_skipped_short_lead"] += 1
           continue
 
-        inputs.append(text_encoder.EOS_ID)
-        targets.append(text_encoder.EOS_ID)
+        # inputs.append(text_encoder.EOS_ID)
+        # targets.append(text_encoder.EOS_ID)
 
         stats["num_wikis_written"] += 1
         yield {
             "inputs": inputs,
-            "targets": targets,
-            "section_boundaries": section_boundaries,
+            "titles": titles,
+            "sections": sections,
+            # "targets": targets,
+            # "section_boundaries": section_boundaries,
         }
 
     tf.logging.info("Total: %d, Skipped: %d",
@@ -482,21 +494,28 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
 
 
 def _format_title(title):
-  return " == %s == " % title
+  return title
+  # return "<t> %s </t> " % title
 
+def _format_section(section):
+  return section
+  # return "<sec> %s </sec> " % section
 
 def _encode_wiki_sections(sections, vocab):
   """Encodes sections with vocab. Returns ids and section boundaries."""
-  ids = []
-  section_boundaries = []
+  # ids = []
+  # section_boundaries = []
+  all_titles = []
+  all_sections = []
   for i, section in enumerate(sections):
-    if i > 0:
-      # Skip including article title
-      ids.extend(vocab.encode(_format_title(_normalize_text(section.title))))
-    ids.extend(vocab.encode(_normalize_text(section.text)))
-    section_boundaries.append(len(ids))
+    # if i > 0:
+    #   # Skip including article title
+    title_processed = _format_title(_normalize_text(section.title))
+    all_titles.append(title_processed)
+    section_processed = _normalize_text(section.text)
+    all_sections.append(section_processed)
 
-  return ids, section_boundaries
+  return all_titles, all_sections
 
 
 def _process_folders(tmp_dir):
@@ -509,9 +528,10 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
   # Setup output files
   shard_files = make_ref_shard_files(out_dir)
   num_refs = 0
+  total = len(wet_files)
   for i, wet_file in enumerate(wet_files):
     num_refs_in_wet = 0
-    tf.logging.info(f"Processing file {i}")
+    tf.logging.info(f"Processing file {i} of {total}")
 
     # Read metadata file
     metadata_fname = os.path.join(
@@ -535,11 +555,12 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
     jj = 0
     for wet_record in record_gen:
       jj += 1
+      # these are shard ids that contain one or more Wikipedia
+      # articles that cite this reference
       shard_ids = wet_metadata.get(wet_record.url)
       if not shard_ids:
         # URL not in dataset
         continue
-
       # Serialize and write out
       ex = _make_example_from_record(wet_record)
       ex_str = ex.SerializeToString()
