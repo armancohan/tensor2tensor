@@ -404,7 +404,6 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
     found_ , not_found_ = 0, 0    
     for shard_id in shard_ids:
       tf.logging.info("Processing shard %d", shard_id)
-      # import ipdb; ipdb.set_trace()
       wiki_urls = _wiki_urls_for_shard(shard_id, urls_dir)
       tf.logging.info("Loaded wiki URLs for shard")
       refs_content = _references_content(ref_files_by_shard[shard_id])
@@ -420,7 +419,6 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
         stats["total_original_refs"] += len(ref_urls)
         stats_wiki_original_refs = len(ref_urls)
         stats_wiki_found_refs = 0
-        # import ipdb; ipdb.set_trace()
         tf.logging.info(f"found {found_}, not found: {not_found_}")        
         for ref_url in ref_urls:
           ref_content = refs_content.get(ref_url.encode())
