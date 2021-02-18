@@ -564,6 +564,7 @@ def extract_references_from_wets(wet_files, metadata_dir, out_dir,
       ex_str = ex.SerializeToString()
       for shard_id in shard_ids:
         shard_files[shard_id].write(ex_str)
+        shard_files[shard_id].flush()
       num_refs += 1
       num_refs_in_wet += 1
     tf.logging.info("Wrote out %d references for this WET", num_refs_in_wet)
