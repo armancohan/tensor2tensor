@@ -40,6 +40,18 @@ flags.DEFINE_bool("rm_per_shard_stats", True,
                   "out the aggregated stats.")
 
 
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
+
+
 def aggregate_stats(stats_files):
   """Aggregate stats in per-shard stats files."""
   all_stats = {}
@@ -163,7 +175,7 @@ def main(_):
                        coverage)
   with tf.gfile.Open(
       os.path.join(FLAGS.out_dir, "stats.json"), "w") as f:
-    f.write(json.dumps(agg_stats))
+    f.write(json.dumps(agg_stats, cls=NpEncoder))
   if FLAGS.rm_per_shard_stats and not missing_files:
     for fname in stats_files:
       tf.gfile.Remove(fname)
