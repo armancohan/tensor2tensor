@@ -170,9 +170,7 @@ def main(_):
   if not FLAGS.for_commoncrawl:
     coverage = agg_stats["overall_ref_coverage"] * 100
     if not coverage > 80:
-      tf.logging.error("Overall reference coverage is expected to be > 80%. "
-                       "It is %0.1f. You may want to rerun get_references_web.",
-                       coverage)
+      tf.logging.error(f"coverage too low {coverage}")
   with tf.gfile.Open(
       os.path.join(FLAGS.out_dir, "stats.json"), "w") as f:
     f.write(json.dumps(agg_stats, cls=NpEncoder))

@@ -140,7 +140,7 @@ def outputs_exist(filenames):
 
 
 def generate_files(generator, output_filenames,
-                   max_cases=None, cycle_every_n=1):
+                   max_cases=None, cycle_every_n=1, overwrite=False):
   """Generate cases from a generator and save as TFRecord files.
 
   Generated cases are transformed to tf.Example protos and saved as TFRecords
@@ -154,7 +154,7 @@ def generate_files(generator, output_filenames,
     cycle_every_n: how many cases from the generator to take before
       switching to the next shard; by default set to 1, switch every case.
   """
-  if outputs_exist(output_filenames):
+  if outputs_exist(output_filenames) and not overwrite:
     tf.logging.info("Skipping generator because outputs files exists at {}"
                     .format(output_filenames))
     return

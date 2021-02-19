@@ -41,6 +41,8 @@ flags.DEFINE_string("urls_dir", "gs://tensor2tensor-data/wikisum/wiki_urls/",
 flags.DEFINE_string("vocab_dir", None, "Directory with vocab file")
 flags.DEFINE_bool("for_commoncrawl", False,
                   "Whether to use WikisumCommoncrawl or WikisumWeb.")
+flags.DEFINE_bool("overwrite", False,
+                  "Whether overwrite existing files.")          
 
 
 def main(_):
@@ -65,7 +67,8 @@ def main(_):
         refs_dir=FLAGS.refs_dir,
         urls_dir=FLAGS.urls_dir,
         vocab_path=os.path.join(FLAGS.vocab_dir, problem.vocab_filename),
-        out_filepaths=out_filepaths)
+        out_filepaths=out_filepaths,
+        overwrite=FLAGS.overwrite)
 
 
 if __name__ == "__main__":

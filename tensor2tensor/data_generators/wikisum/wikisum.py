@@ -381,7 +381,7 @@ def rank_reference_paragraphs(wiki_title, references_content, normalize=True):
 
 
 def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
-                     out_filepaths):
+                     out_filepaths, overwrite=False):
   """Produce examples from shard_ids to out_filepaths."""
   # * Join the Wikipedia articles with their references
   # * Run Tf-idf to sort reference paragraphs
@@ -488,7 +488,7 @@ def produce_examples(shard_ids, wikis_dir, refs_dir, urls_dir, vocab_path,
     with tf.gfile.Open(stats_fname, "w") as f:
       f.write(json.dumps(stats))
 
-  generator_utils.generate_files(example_generator(), out_filepaths)
+  generator_utils.generate_files(example_generator(), out_filepaths, overwrite=overwrite)
 
 
 def _format_title(title):
