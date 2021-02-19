@@ -188,7 +188,7 @@ def generate_files(generator, output_filenames,
     writer.close()
 
   for tmp_name, final_name in zip(tmp_filenames, output_filenames):
-    tf.gfile.Rename(tmp_name, final_name)
+    tf.gfile.Rename(tmp_name, final_name, overwrite=overwrite)
 
   if num_shards > 0:
     if tag == "train":
