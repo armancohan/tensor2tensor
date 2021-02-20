@@ -334,9 +334,9 @@ def _token_counts(text, token_set=None):
 
 
 def _normalize_text(text):
-  text = text.lower()
+  # text = text.lower()
   # Space around punctuation
-  text = re.sub("[%s]" % re.escape(string.punctuation), r" \g<0> ", text)
+  # text = re.sub("[%s]" % re.escape(string.punctuation), r" \g<0> ", text)
   text = re.sub(r"\s+", " ", text)
   text = text.strip()
   return text
