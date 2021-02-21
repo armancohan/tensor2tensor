@@ -333,13 +333,15 @@ def _token_counts(text, token_set=None):
   return counts
 
 
-def _normalize_text(text):
-  # text = text.lower()
+def _normalize_text(text, lower=False, space_around_punc=False):
+  if lower:
+    text = text.lower()
   # Space around punctuation
-  # text = re.sub("[%s]" % re.escape(string.punctuation), r" \g<0> ", text)
+  if space_around_punc:
+    text = re.sub("[%s]" % re.escape(string.punctuation), r" \g<0> ", text)
   text = re.sub(r"\s+", " ", text)
   text = text.strip()
-  return text
+  return text  
 
 
 def _tokens_to_score(tokens):
@@ -348,14 +350,15 @@ def _tokens_to_score(tokens):
 
 def rank_reference_paragraphs(wiki_title, references_content, normalize=True):
   """Rank and return reference paragraphs by tf-idf score on title tokens."""
-  normalized_title = _normalize_text(wiki_title)
+  normalized_title = _normalize_text(wiki_title, lower=True, space_around_punc=True)
   title_tokens = _tokens_to_score(
       set(tokenizer.encode(text_encoder.native_to_unicode(normalized_title))))
   ref_paragraph_info = []
   doc_counts = collections.defaultdict(int)
   for ref in references_content:
     for paragraph in ref.split("\n"):
-      normalized_paragraph = _normalize_text(paragraph)
+      processed_paragraph = _normalize_text(paragraph)
+      normalized_paragraph = _normalize_text(paragraph, lower=True, space_around_punc=True)
       if cc_utils.filter_paragraph(normalized_paragraph):
         # Skip paragraph
         continue
@@ -363,7 +366,7 @@ def rank_reference_paragraphs(wiki_title, references_content, normalize=True):
       for token in title_tokens:
         if counts[token]:
           doc_counts[token] += 1
-      content = normalized_paragraph if normalize else paragraph
+      content = processed_paragraph if normalize else paragraph
       info = {"content": content, "counts": counts}
       ref_paragraph_info.append(info)
 
