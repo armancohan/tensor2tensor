@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--for_commoncrawl', help='', default=False, action='store_true')
     parser.add_argument('--shard', help='if passed it will only process certain shard (file ids in that range)', default=None)
     parser.add_argument('--total_shards', help='if passed it will only process certain shard (total files in the shard)', default=None)
-    parser.add_argument('--workers', default=1, type=int)
+    parser.add_argument('--workers', default=1, type=int, help='set to -1 to use all cpus')
     args = parser.parse_args()
 
     if args.for_commoncrawl:
@@ -59,10 +59,11 @@ def main():
     else:
         current_files = data_files
         
-    if args.workers > 1:
+    if args.workers > 1 or args.workers == -1:
         function_args = [{'file': e, 'args': args} for e in current_files]
-        with mp.Pool(mp.cpu_count()) as p:
-            res = list(tqdm(p.imap(process_file, function_args), total=len(function_args)))  
+        cpus = args.workers if args.workers != -1 else mp.cpu_count()
+        with mp.Pool(cpus) as p:
+            res = list(tqdm(p.imap(process_file, function_args), total=len(function_args), desc=f'processing shards with {cpus} workers'))  
     else:
         for tfdataset_file in tqdm(current_files, desc='processing shards'):
             process_file({'file': tfdataset_file, 'args': args})
