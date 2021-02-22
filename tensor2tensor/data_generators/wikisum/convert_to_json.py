@@ -68,7 +68,7 @@ def main():
         for tfdataset_file in tqdm(current_files, desc='processing shards'):
             process_file({'file': tfdataset_file, 'args': args})
         
-    print(done)
+    print('done')
 
 
 if __name__ == '__main__':
